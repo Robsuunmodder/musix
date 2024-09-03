@@ -1,43 +1,44 @@
-import { Musix } from './Musixmatch.ts';
+import { serve } from "https://deno.land/std@0.224.0/http/mod.ts";
+import { Musix } from "./Musixmatch.ts"; // Ajuste para importar da mesma pasta
 
 const musix = new Musix();
 
-const handleRequest = async (req: Request): Promise<Response> => {
-    const url = new URL(req.url);
-    const type = url.searchParams.get('type');
+serve(async (req) => {
+  const url = new URL(req.url);
+  const type = url.searchParams.get("type");
+  let response;
 
-    if (type === 'default') {
-        const query = url.searchParams.get('q');
-        if (!query) {
-            return new Response(JSON.stringify({ error: 'Missing query parameter', isError: true }), { status: 400 });
-        }
-
-        try {
-            const track_id = await musix.searchTrack(query);
-            const lyrics = await musix.getLyrics(track_id);
-            return new Response(JSON.stringify({ lyrics, isError: false }));
-        } catch (error) {
-            return new Response(JSON.stringify({ error: error.message, isError: true }), { status: 500 });
-        }
-
+  try {
+    if (type === "default") {
+      const query = url.searchParams.get("q");
+      const track_id = await musix.searchTrack(query);
+      if (track_id) {
+        const lyrics = await musix.getLyrics(track_id);
+        response = { lyrics, isError: false };
+      } else {
+        response = { error: "Track id seems like doesn't exist.", isError: true };
+      }
     } else {
-        const title = url.searchParams.get('t');
-        const artist = url.searchParams.get('a');
-        const duration = url.searchParams.get('d');
-
-        if (!title || !artist) {
-            return new Response(JSON.stringify({ error: 'Missing title or artist parameter', isError: true }), { status: 400 });
-        }
-
-        try {
-            const lyrics = await musix.getLyricsAlternative(title, artist, duration || null);
-            return new Response(JSON.stringify({ lyrics, isError: false }));
-        } catch (error) {
-            return new Response(JSON.stringify({ error: error.message, isError: true }), { status: 500 });
-        }
+      const title = url.searchParams.get("t");
+      const artist = url.searchParams.get("a");
+      const duration = url.searchParams.get("d");
+      const lyrics = await musix.getLyricsAlternative(title, artist, duration ? convertDuration(duration) : null);
+      if (lyrics) {
+        response = { lyrics, isError: false };
+      } else {
+        response = { error: "Lyrics seem like don't exist.", isError: true, title, artist, duration: convertDuration(duration) };
+      }
     }
-};
+  } catch (error) {
+    response = { error: error.message, isError: true };
+  }
 
-addEventListener('fetch', (event) => {
-    event.respondWith(handleRequest(event.request));
+  return new Response(JSON.stringify(response), {
+    headers: { "Content-Type": "application/json" },
+  });
 });
+
+function convertDuration(time: string): number {
+  const [minutes, seconds] = time.split(":").map(Number);
+  return (minutes * 60) + seconds;
+}
