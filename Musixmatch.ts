@@ -1,4 +1,4 @@
-import { fetch } from "https://deno.land/std@0.163.0/fetch/mod.ts";
+import { fetch } from "https://deno.land/std@0.181.0/fetch/mod.ts";
 
 export class Musix {
     private tokenUrl = 'https://apic-desktop.musixmatch.com/ws/1.1/token.get?app_id=web-desktop-app-v1.0';
